@@ -1,0 +1,57 @@
+a. How many types of tigers can be found in the taxonomy table of the dataset? What is the "ncbi_id" of the Sumatran Tiger? (hint: use the biological name of the tiger)
+
+SELECT fr.rfam_acc, fr.rfamseq_acc, fr.seq_start, fr.seq_end, f.type
+FROM full_region fr, rfamseq rf, taxonomy tx, family f
+WHERE
+rf.ncbi_id = tx.ncbi_id
+AND f.rfam_acc = fr.rfam_acc
+AND fr.rfamseq_acc = rf.rfamseq_acc
+AND tx.tax_string LIKE '%Panthera sumatrae%'
+AND f.type LIKE '%tigers%'
+AND is_significant = 1 -- exclude low-scoring matches from the same clan
+
+c. Which type of rice has the longest DNA sequence? (hint: use the rfamseq and the taxonomy tables)
+
+SELECT fr.rfam_acc, fr.rfamseq_acc, fr.seq_start, fr.seq_end, f.type
+FROM full_region fr, rfamseq rf, taxonomy tx, family f
+WHERE
+rf.ncbi_id = tx.ncbi_id
+AND f.rfam_acc = fr.rfam_acc
+AND fr.rfamseq_acc = rf.rfamseq_acc
+AND tx.tax_string LIKE '%rice%'
+AND f.type LIKE '%tigers%'
+AND rfamseq.rfamseq_len IS NOT NULL
+
+d.We want to paginate a list of the family names and their longest DNA sequence lengths (in descending order of length) where only families that have DNA sequence lengths greater than 1,000,000 are included. Give a query that will return the 9th page when there are 15 results per page. (hint: we need the family accession ID, family name and the maximum length in the results)
+
+WITH RankedFamilies AS (
+    SELECT
+      fr.rfam_acc, fr.rfamseq_acc, fr.seq_start, fr.seq_end, f.type
+    FROM
+        full_region fr, rfamseq rf, taxonomy tx, family f
+    JOIN
+        fr.rfam_acc,full_region fr, rfamseq rf, taxonomy tx, family f
+    GROUP BY
+        fr.rfam_acc,
+    HAVING
+        MAX(rfamseq.rfamseq_len) > 1000000
+    ORDER BY
+        max_sequence_length DESC
+),
+PaginatedFamilies AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (ORDER BY max_sequence_length DESC) AS RowNum
+    FROM
+        RankedFamilies
+)
+SELECT
+   fr.rfam_acc,
+   fr.rfamseq_acc,
+    max_sequence_length
+FROM
+    PaginatedFamilies
+WHERE
+    RowNum BETWEEN 121 AND 135; -- Assuming 15 results per page and you want the 9th page
+
+
